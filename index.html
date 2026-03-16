@@ -1,0 +1,791 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap");
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      :root {
+        --bg: #0a0a0f;
+        --surface: #111118;
+        --border: #1e1e2e;
+        --muted: #3d3d55;
+        --text: #e2e2f0;
+        --sub: #7070a0;
+        --green: #22c55e;
+        --green-dim: #16a34a;
+        --red: #ef4444;
+        --accent: #818cf8;
+        --mono: "Space Mono", monospace;
+        --sans: "DM Sans", sans-serif;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100vh;
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--sans);
+        overflow: hidden;
+        user-select: none;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      /* Content shell — centered, max-width only for the content area */
+      .app-shell {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        overflow: hidden;
+        position: relative;
+      }
+
+      /* Inner wrapper that constrains width */
+      .app-inner {
+        width: 100%;
+        max-width: 420px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        overflow: hidden;
+      }
+
+      /* ── Title bar — full width, always ── */
+      .titlebar {
+        -webkit-app-region: drag;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 16px;
+        border-bottom: 1px solid var(--border);
+        background: var(--surface);
+        flex-shrink: 0;
+      }
+      .titlebar-left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .logo-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--green);
+        box-shadow: 0 0 6px var(--green);
+        transition:
+          background 0.3s,
+          box-shadow 0.3s;
+      }
+      .logo-dot.off {
+        background: var(--muted);
+        box-shadow: none;
+      }
+      .app-name {
+        font-family: var(--mono);
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        color: var(--sub);
+        text-transform: uppercase;
+      }
+      .titlebar-right {
+        -webkit-app-region: no-drag;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      /* Settings gear */
+      .tb-btn {
+        background: none;
+        border: none;
+        color: var(--sub);
+        cursor: pointer;
+        font-size: 15px;
+        padding: 2px 4px;
+        border-radius: 4px;
+        transition: color 0.15s;
+        line-height: 1;
+      }
+      .tb-btn:hover {
+        color: var(--text);
+      }
+      .tb-btn.active {
+        color: var(--accent);
+      }
+
+      /* Thin divider */
+      .tb-sep {
+        width: 1px;
+        height: 12px;
+        background: var(--border);
+      }
+
+      /* Windows-style buttons */
+      .wc {
+        display: flex;
+        align-items: stretch;
+        gap: 0;
+        margin-right: -16px;
+      }
+      .wc button {
+        width: 40px;
+        height: 32px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--sub);
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition:
+          background 0.12s,
+          color 0.12s;
+        -webkit-app-region: no-drag;
+      }
+      .wc button:hover {
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--text);
+      }
+      .wc .wc-hide:hover {
+        background: #c42b1c;
+        color: white;
+      }
+
+      /* Toast */
+      .toast {
+        position: fixed;
+        bottom: 18px;
+        left: 50%;
+        transform: translateX(-50%) translateY(6px);
+        background: var(--surface);
+        border: 1px solid rgba(34, 197, 94, 0.3);
+        border-radius: 8px;
+        padding: 7px 14px;
+        font-size: 12px;
+        color: var(--green);
+        opacity: 0;
+        pointer-events: none;
+        transition:
+          opacity 0.2s,
+          transform 0.2s;
+        white-space: nowrap;
+        z-index: 999;
+      }
+      .toast.show {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+
+      /* ── Main Content ── */
+      .content {
+        flex: 1;
+        padding: 28px 32px 24px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 24px;
+        overflow-y: auto;
+      }
+
+      /* Power Button */
+      .power-wrap {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: 8px;
+      }
+      .power-ring {
+        position: absolute;
+        width: 148px;
+        height: 148px;
+        border-radius: 50%;
+        border: 1px solid var(--muted);
+        opacity: 0.3;
+        transition: opacity 0.4s;
+      }
+      .power-ring.pulse {
+        border-color: var(--green);
+        opacity: 1;
+        animation: ring-pulse 2.4s ease-in-out infinite;
+      }
+      @keyframes ring-pulse {
+        0%,
+        100% {
+          transform: scale(1);
+          opacity: 0.5;
+        }
+        50% {
+          transform: scale(1.08);
+          opacity: 0.15;
+        }
+      }
+      .power-btn {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        border: 2px solid var(--muted);
+        background: var(--surface);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition:
+          border-color 0.3s,
+          box-shadow 0.3s,
+          transform 0.1s;
+        position: relative;
+        z-index: 1;
+      }
+      .power-btn:hover {
+        transform: scale(1.03);
+      }
+      .power-btn:active {
+        transform: scale(0.97);
+      }
+      .power-btn.on {
+        border-color: var(--green);
+        box-shadow:
+          0 0 28px rgba(34, 197, 94, 0.25),
+          0 0 60px rgba(34, 197, 94, 0.08);
+      }
+      .power-icon {
+        width: 44px;
+        height: 44px;
+        transition: filter 0.3s;
+      }
+      .power-btn.on .power-icon {
+        filter: drop-shadow(0 0 6px var(--green));
+      }
+      .power-icon svg {
+        width: 100%;
+        height: 100%;
+      }
+
+      .status-label {
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--sub);
+        transition: color 0.3s;
+      }
+      .status-label.on {
+        color: var(--green);
+      }
+
+      /* ── Time Preview Cards ── */
+      .stats {
+        display: flex;
+        gap: 12px;
+        width: 100%;
+      }
+      .stat-card {
+        flex: 1;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 14px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        transition: border-color 0.3s;
+      }
+      .stat-card.active {
+        border-color: rgba(34, 197, 94, 0.25);
+      }
+      .stat-label {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--sub);
+      }
+      .stat-value {
+        font-family: var(--mono);
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--text);
+        line-height: 1;
+      }
+      .stat-unit {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--sub);
+        margin-top: 2px;
+      }
+
+      /* ── Next break countdown ── */
+      .next-break {
+        width: 100%;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 14px 18px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        opacity: 0;
+        transition: opacity 0.4s;
+      }
+      .next-break.visible {
+        opacity: 1;
+      }
+      .nb-label {
+        font-size: 12px;
+        color: var(--sub);
+      }
+      .nb-timer {
+        font-family: var(--mono);
+        font-size: 15px;
+        color: var(--accent);
+        letter-spacing: 0.06em;
+      }
+
+      /* ── Settings Panel ── */
+      .settings-panel {
+        position: absolute;
+        inset: 0;
+        background: var(--bg);
+        transform: translateX(100%);
+        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        z-index: 10;
+        display: flex;
+        flex-direction: column;
+      }
+      .settings-panel.open {
+        transform: translateX(0);
+      }
+
+      .sp-header {
+        -webkit-app-region: drag;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px 10px;
+        border-bottom: 1px solid var(--border);
+        background: var(--surface);
+        flex-shrink: 0;
+      }
+      .sp-title {
+        font-size: 12px;
+        font-family: var(--mono);
+        color: var(--sub);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .sp-close {
+        -webkit-app-region: no-drag;
+        width: 28px;
+        height: 28px;
+        background: none;
+        border: none;
+        border-radius: 6px;
+        color: var(--sub);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        transition:
+          background 0.15s,
+          color 0.15s;
+      }
+      .sp-close:hover {
+        background: var(--border);
+        color: var(--text);
+      }
+
+      .sp-body {
+        padding: 24px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        overflow-y: auto;
+      }
+
+      .sp-body::-webkit-scrollbar {
+        display: none;
+      }
+
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+      }
+      .field label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--sub);
+      }
+      .field input {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px 13px;
+        color: var(--text);
+        font-family: var(--sans);
+        font-size: 14px;
+        outline: none;
+        transition: border-color 0.2s;
+        width: 100%;
+      }
+      .field input:focus {
+        border-color: var(--accent);
+      }
+      .field .hint {
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      .divider {
+        height: 1px;
+        background: var(--border);
+      }
+
+      .save-btn {
+        padding: 12px;
+        background: var(--accent);
+        border: none;
+        border-radius: 10px;
+        color: white;
+        font-family: var(--sans);
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition:
+          opacity 0.15s,
+          transform 0.1s;
+        width: 100%;
+      }
+      .save-btn:hover {
+        opacity: 0.88;
+      }
+      .save-btn:active {
+        transform: scale(0.98);
+      }
+
+      .quit-btn {
+        padding: 10px;
+        background: none;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        color: var(--sub);
+        font-family: var(--sans);
+        font-size: 13px;
+        cursor: pointer;
+        transition:
+          border-color 0.15s,
+          color 0.15s;
+        width: 100%;
+      }
+      .quit-btn:hover {
+        border-color: var(--red);
+        color: var(--red);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- ── Title Bar — full width ── -->
+    <div class="titlebar">
+      <div class="titlebar-left">
+        <div class="logo-dot off" id="logoDot"></div>
+        <span class="app-name">BlinkBreak</span>
+      </div>
+      <div class="titlebar-right">
+        <button
+          class="tb-btn"
+          id="settingsBtn"
+          title="Settings"
+          onclick="toggleSettings()"
+        >
+          ⚙
+        </button>
+        <div class="tb-sep"></div>
+        <div class="wc">
+          <button
+            class="wc-min"
+            title="Minimize"
+            onclick="ipcRenderer.send('minimize')"
+          >
+            &#x2013;
+          </button>
+          <button
+            class="wc-max"
+            id="maxBtn"
+            title="Maximize"
+            onclick="toggleMaximize()"
+          >
+            &#x25A1;
+          </button>
+          <button
+            class="wc-hide"
+            title="Hide to tray"
+            onclick="ipcRenderer.send('hide-window')"
+          >
+            &#x2715;
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="app-shell">
+      <div class="app-inner">
+        <!-- ── Main Content ── -->
+        <div class="content">
+          <div class="power-wrap">
+            <div class="power-ring" id="powerRing"></div>
+            <button class="power-btn" id="powerBtn" onclick="togglePower()">
+              <span class="power-icon">
+                <svg
+                  viewBox="0 0 44 44"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M22 6V22"
+                    stroke="#e2e2f0"
+                    stroke-width="3"
+                    stroke-linecap="round"
+                  />
+                  <path
+                    d="M13.5 10.5A15 15 0 1 0 30.5 10.5"
+                    stroke="#e2e2f0"
+                    stroke-width="3"
+                    stroke-linecap="round"
+                    fill="none"
+                  />
+                </svg>
+              </span>
+            </button>
+          </div>
+
+          <div class="status-label" id="statusLabel">Inactive</div>
+
+          <div class="stats">
+            <div class="stat-card" id="workCard">
+              <div class="stat-label">Work</div>
+              <div class="stat-value" id="workVal">20</div>
+              <div class="stat-unit">minutes</div>
+            </div>
+            <div class="stat-card" id="breakCard">
+              <div class="stat-label">Break</div>
+              <div class="stat-value" id="breakVal">20</div>
+              <div class="stat-unit">seconds</div>
+            </div>
+          </div>
+
+          <div class="next-break" id="nextBreak">
+            <span class="nb-label">Next break in</span>
+            <span class="nb-timer" id="nbTimer">—</span>
+          </div>
+        </div>
+
+        <!-- ── Settings Panel ── -->
+        <div class="settings-panel" id="settingsPanel">
+          <div class="sp-header">
+            <span class="sp-title">Settings</span>
+            <button class="sp-close" onclick="closeSettings()">✕</button>
+          </div>
+
+          <div class="sp-body">
+            <div class="field">
+              <label>Work Time</label>
+              <input id="sWork" type="number" min="1" max="180" value="20" />
+              <span class="hint">Minutes before each break</span>
+            </div>
+
+            <div class="field">
+              <label>Break Duration</label>
+              <input id="sBreak" type="number" min="5" max="300" value="20" />
+              <span class="hint">Seconds the break overlay stays</span>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="field">
+              <label>Pre-break Message</label>
+              <input
+                id="sPre"
+                type="text"
+                maxlength="60"
+                value="Time for a screen break!"
+              />
+            </div>
+
+            <div class="field">
+              <label>Post-break Message</label>
+              <input
+                id="sPost"
+                type="text"
+                maxlength="60"
+                value="Back to focus. Good work! 🎯"
+              />
+            </div>
+
+            <button class="save-btn" onclick="saveSettings()">
+              Save & Back
+            </button>
+
+            <div class="divider"></div>
+
+            <button class="quit-btn" onclick="ipcRenderer.send('quit-app')">
+              Quit BlinkBreak
+            </button>
+          </div>
+        </div>
+
+        <div class="toast" id="toast">✓ Settings saved</div>
+      </div>
+      <!-- /app-inner -->
+    </div>
+    <!-- /app-shell -->
+
+    <script>
+      const { ipcRenderer } = require("electron");
+
+      let running = false;
+      let settings = {
+        workTime: 20,
+        breakTime: 20,
+        preMessage: "",
+        postMessage: "",
+      };
+      let countdownInterval = null;
+      let cycleStartTime = null;
+
+      // ── IPC ───────────────────────────────────────────────────────────────────────
+
+      ipcRenderer.on("init", (_, { settings: s, running: r }) => {
+        applySettings(s);
+        setRunning(r);
+        if (r) startCountdown(s.workTime);
+      });
+
+      ipcRenderer.on("power-state", (_, on) => {
+        setRunning(on);
+        if (on) startCountdown(settings.workTime);
+        else stopCountdown();
+      });
+
+      ipcRenderer.on("settings", (_, s) => applySettings(s));
+
+      // ── State ─────────────────────────────────────────────────────────────────────
+
+      function applySettings(s) {
+        settings = s;
+        document.getElementById("workVal").textContent = s.workTime;
+        document.getElementById("breakVal").textContent = s.breakTime;
+        document.getElementById("sWork").value = s.workTime;
+        document.getElementById("sBreak").value = s.breakTime;
+        document.getElementById("sPre").value = s.preMessage;
+        document.getElementById("sPost").value = s.postMessage;
+      }
+
+      function setRunning(on) {
+        running = on;
+        document.getElementById("powerBtn").classList.toggle("on", on);
+        document.getElementById("powerRing").classList.toggle("pulse", on);
+        document.getElementById("logoDot").classList.toggle("off", !on);
+        const label = document.getElementById("statusLabel");
+        label.classList.toggle("on", on);
+        label.textContent = on ? "Active" : "Inactive";
+        document.getElementById("workCard").classList.toggle("active", on);
+        document.getElementById("breakCard").classList.toggle("active", on);
+      }
+
+      // ── Countdown ─────────────────────────────────────────────────────────────────
+
+      function startCountdown(workMinutes) {
+        stopCountdown();
+        cycleStartTime = Date.now();
+        const totalMs = workMinutes * 60 * 1000;
+        document.getElementById("nextBreak").classList.add("visible");
+        countdownInterval = setInterval(() => {
+          const remaining = totalMs - ((Date.now() - cycleStartTime) % totalMs);
+          document.getElementById("nbTimer").textContent = formatMs(remaining);
+        }, 500);
+      }
+
+      function stopCountdown() {
+        if (countdownInterval) {
+          clearInterval(countdownInterval);
+          countdownInterval = null;
+        }
+        document.getElementById("nextBreak").classList.remove("visible");
+        document.getElementById("nbTimer").textContent = "—";
+      }
+
+      function formatMs(ms) {
+        const s = Math.floor(ms / 1000);
+        const m = Math.floor(s / 60);
+        const ss = s % 60;
+        return `${String(m).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
+      }
+
+      // ── Actions ───────────────────────────────────────────────────────────────────
+
+      function togglePower() {
+        if (!running) ipcRenderer.send("start-cycle", settings);
+        else ipcRenderer.send("stop-cycle");
+      }
+
+      function toggleSettings() {
+        const open = document
+          .getElementById("settingsPanel")
+          .classList.toggle("open");
+        document.getElementById("settingsBtn").classList.toggle("active", open);
+      }
+
+      function closeSettings() {
+        document.getElementById("settingsPanel").classList.remove("open");
+        document.getElementById("settingsBtn").classList.remove("active");
+      }
+
+      function saveSettings() {
+        const s = {
+          workTime: Number(document.getElementById("sWork").value),
+          breakTime: Number(document.getElementById("sBreak").value),
+          preMessage: document.getElementById("sPre").value.trim(),
+          postMessage: document.getElementById("sPost").value.trim(),
+        };
+        applySettings(s);
+        ipcRenderer.send("save-settings", s);
+        closeSettings();
+        showToast("✓ Settings saved");
+      }
+
+      function showToast(msg) {
+        const t = document.getElementById("toast");
+        t.textContent = msg;
+        t.classList.add("show");
+        setTimeout(() => t.classList.remove("show"), 2200);
+      }
+
+      let isMaximized = false;
+      function toggleMaximize() {
+        ipcRenderer.send("maximize");
+        isMaximized = !isMaximized;
+        document.getElementById("maxBtn").innerHTML = isMaximized
+          ? "&#x29C9;"
+          : "&#x25A1;";
+      }
+    </script>
+  </body>
+</html>

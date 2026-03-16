@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: transparent;
+  font-family: system-ui;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 18px;
+  height: 100vh;
+  color: white;
+  pointer-events: none;
+}
+
+/* Fixed-size stage — all children overlap at the same spot */
+#stage {
+  position: relative;
+  width: 240px;
+  height: 80px;
+}
+
+/* Every layer sits at the exact same position */
+#message,
+#countdown,
+#breakArea {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+#message {
+  font-size: 14px;
+  opacity: .9;
+  line-height: 1.4;
+  text-shadow:
+    0 0 6px rgba(255,255,255,.8),
+    0 0 14px rgba(255,255,255,.5);
+}
+
+#countdown {
+  font-size: 48px;
+  font-weight: 600;
+  opacity: 0;
+  transform-origin: center;
+  text-shadow:
+    0 0 10px rgba(255,255,255,.9),
+    0 0 20px rgba(255,255,255,.6);
+}
+
+.animate {
+  animation: countAnim 1s ease forwards;
+}
+
+@keyframes countAnim {
+  0%   { transform: scale(1.1); opacity: 0; }
+  40%  { opacity: 1; }
+  100% { transform: scale(.9);  opacity: 0; }
+}
+
+#breakArea {
+  display: none;
+}
+
+#emoji {
+  font-size: 18px;
+  margin-bottom: 3px;
+}
+
+#timer {
+  font-size: 28px;
+  font-weight: 600;
+  text-shadow:
+    0 0 8px rgba(34,197,94,.9),
+    0 0 16px rgba(34,197,94,.6);
+}
+
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <div id="message"></div>
+  <div id="countdown"></div>
+  <div id="breakArea">
+    <div id="emoji">🧘</div>
+    <div id="timer"></div>
+  </div>
+</div>
+
+<script>
+
+const { ipcRenderer } = require("electron")
+
+const message   = document.getElementById("message")
+const countdown = document.getElementById("countdown")
+const breakArea = document.getElementById("breakArea")
+const timer     = document.getElementById("timer")
+
+ipcRenderer.on("sequence", (_, data) => startSequence(data))
+
+async function startSequence({ breakTime, preMessage, postMessage }) {
+  // reset everything
+  message.innerText = ""
+  countdown.innerText = ""
+  countdown.classList.remove("animate")
+  breakArea.style.display = "none"
+
+  // ① Pre-message
+  message.innerText = preMessage
+  await sleep(1500)
+  message.innerText = ""
+
+  // ② Countdown
+  await playCountdown()
+
+  // ③ Break timer + post message
+  await startBreakTimer(breakTime, postMessage)
+}
+
+async function playCountdown() {
+  for (const num of ["3","2","1","GO"]) {
+    countdown.innerText = num
+    countdown.classList.remove("animate")
+    await sleep(40)
+    countdown.classList.add("animate")
+    await sleep(1000)
+  }
+  countdown.innerText = ""
+}
+
+function startBreakTimer(seconds, postMessage) {
+  return new Promise(resolve => {
+    breakArea.style.display = "flex"
+    timer.innerText = formatTime(seconds)
+
+    const interval = setInterval(() => {
+      seconds--
+      timer.innerText = formatTime(Math.max(seconds, 0))
+      if (seconds <= 0) {
+        clearInterval(interval)
+        breakArea.style.display = "none"
+        message.innerText = postMessage
+        setTimeout(() => {
+          message.innerText = ""
+          resolve()
+        }, 3000)
+      }
+    }, 1000)
+  })
+}
+
+function formatTime(sec) {
+  const m = String(Math.floor(sec / 60)).padStart(2, "0")
+  const s = String(sec % 60).padStart(2, "0")
+  return `${m}:${s}`
+}
+
+function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms))
+}
+
+</script>
+</body>
+</html>

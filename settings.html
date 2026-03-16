@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<style>
+
+body{
+font-family:system-ui;
+background:#0f172a;
+color:white;
+display:flex;
+justify-content:center;
+align-items:center;
+height:100vh;
+margin:0;
+}
+
+.card{
+width:320px;
+background:#111827;
+padding:25px;
+border-radius:14px;
+box-shadow:0 20px 40px rgba(0,0,0,.5);
+}
+
+h2{
+text-align:center;
+margin-bottom:20px;
+}
+
+label{
+font-size:13px;
+opacity:.8;
+display:block;
+margin-top:12px;
+}
+
+input{
+width:100%;
+padding:8px;
+margin-top:4px;
+border-radius:6px;
+border:none;
+outline:none;
+background:#1f2937;
+color:white;
+}
+
+button{
+width:100%;
+padding:10px;
+margin-top:14px;
+border:none;
+border-radius:8px;
+font-weight:600;
+cursor:pointer;
+}
+
+.save{
+background:#334155;
+color:white;
+}
+
+.start{
+background:#22c55e;
+color:black;
+}
+
+button:hover{
+opacity:.9;
+}
+
+.small{
+font-size:11px;
+opacity:.6;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="card">
+
+<h2>BlinkBreak</h2>
+
+<label>Work Time (minutes)</label>
+<input id="work" type="number" value="20">
+
+<label>Break Time (seconds)</label>
+<input id="break" type="number" value="20">
+
+<label>Pre Break Message</label>
+<input id="pre" maxlength="60" value="Give your eyes a short reset">
+
+<label>Post Break Message</label>
+<input id="post" maxlength="60" value="Back to focus">
+
+<div class="small">Max 60 characters</div>
+
+<button class="save" onclick="save()">Save Settings</button>
+
+<button class="start" onclick="start()">Start Productive Cycle</button>
+
+</div>
+
+<script>
+
+const { ipcRenderer } = require("electron")
+
+function getData(){
+
+return{
+workTime:Number(document.getElementById("work").value),
+breakTime:Number(document.getElementById("break").value),
+preMessage:document.getElementById("pre").value,
+postMessage:document.getElementById("post").value
+}
+
+}
+
+function save(){
+
+ipcRenderer.send("save-settings",getData())
+
+alert("Settings saved")
+
+}
+
+function start(){
+
+ipcRenderer.send("start-cycle",getData())
+
+alert("Cycle started 🚀")
+
+}
+
+</script>
+
+</body>
+
+</html>
