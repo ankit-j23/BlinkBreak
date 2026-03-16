@@ -94,13 +94,6 @@ BlinkBreak was built as a simple tool to encourage healthier screen habits while
 
 ---
 
-
-📄 License
-
-This project is open-source and available under the MIT License.
-
----
-
 🙌 Feedback
 
 If you try the app and have suggestions or improvements, feel free to open an issue or share feedback.
